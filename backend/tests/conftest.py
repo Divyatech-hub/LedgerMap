@@ -1,12 +1,10 @@
-from httpx import ASGITransport, AsyncClient
-import pytest_asyncio
+import pytest
+from fastapi.testclient import TestClient
 
 from ledgermap.main import app
 
 
-@pytest_asyncio.fixture
-async def client() -> AsyncClient:
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as test_client:
+@pytest.fixture
+def client() -> TestClient:
+    with TestClient(app) as test_client:
         yield test_client

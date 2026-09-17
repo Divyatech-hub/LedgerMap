@@ -106,50 +106,64 @@ NOT over-engineered:
 - DB: Postgres (pgvector if embeddings end up useful for the classify shortlist step)
 - Deploy: single small service, scales to zero between monthly runs
 
-## What's already prototyped (see /prototype)
+## Implementation status
 
-Built and validated against three real files from one client + one other
-client's ERP export:
+The repository now has the initial backend and frontend structure described
+above. Real workbook fixtures are kept under `/prototype` and are ignored by
+Git through the root `.gitignore` rules for Excel files.
 
-- `build_mapping_memory.py` — extracts persistent (name→code) mapping from
-  historical TB tabs + existing mapping sheets. Also flags names that got
-  inconsistent codes across history (real finding: 11 such cases in the test
-  data — worth flagging to the accountant, not silently picking one).
-- `extract_taxonomy.py` — pulls the fixed (code→description) taxonomy from a
-  client's Detailed MIS, for use as the classifier's closed answer set.
-- `detect_source_type.py` — ERP-export vs free-text-ledger detection via
-  header fingerprint + code-column shape. Verified correct on both real test
-  files.
-- `parse_tb_hierarchy.py` — indent-hierarchy-aware parsing: group headers vs
-  roll-up sub-ledger detail vs genuine leaf accounts.
-- `match_new_tb.py` — exact match then fuzzy match (rapidfuzz) against mapping
-  memory.
-- `classify_unresolved.py` — LLM classification fallback via Claude, tool-use
-  constrained to the fixed taxonomy + `NONE_MATCH`, with hierarchy context in
-  the prompt. **Not yet run end-to-end — needs `ANTHROPIC_API_KEY` set; the
-  original prototyping environment had no API credentials.**
+### Done
 
-## Known gaps to fix (real, not hypothetical — found via real data)
+- Backend package scaffold under `backend/src/ledgermap` with FastAPI,
+  SQLAlchemy session wiring, Alembic configuration, service boundaries,
+  repositories, schemas, and integrations.
+- Local development setup: `backend/pyproject.toml`, Docker Compose PostgreSQL,
+  backend Dockerfile, and Makefile commands for testing, API startup, and
+  migrations.
+- Domain contracts for source types, mapping methods, trial-balance rows,
+  account nodes, and mapping candidates.
+- Workbook adapters for trial-balance rows and mapping memory using
+  `openpyxl`, including byte uploads for the API.
+- Source detection for ERP exports and free-text ledgers using header
+  fingerprints and numeric account-code shape.
+- Hierarchy-aware parsing with ancestor tracking, bold group detection,
+  roll-up detail detection, `Grand Total` filtering, and singleton account
+  preservation.
+- Exact matching followed by RapidFuzz matching, with low-confidence results
+  returned as review items instead of being silently assigned.
+- Detailed MIS taxonomy extraction from client-specific sheet names.
+- A first preview endpoint: `POST /runs/preview` accepts a workbook upload and
+  returns source type, resolution counts, line items, confidence, method, and
+  review reasons.
+- Unit and fixture-driven integration tests for source detection, parsing,
+  matching, health, workbook processing, and taxonomy extraction.
 
-- `parse_tb_hierarchy.py`'s roll-up detection uses a hardcoded group-name list
-  (`ROLLUP_GROUP_NAMES = {"sundry debtors", "sundry creditors", ...}`). On the
-  real test client, receivables are actually grouped by customer/project name
-  (e.g. "KAUST"), not a literal "Sundry Debtors" label — so this needs a more
-  general heuristic (e.g. depth/position-based: "customer-name-shaped leaves
-  past a certain hierarchy depth under Current Assets/Liabilities are
-  sub-ledger detail") rather than a name allowlist.
-- Two parsing edge cases leak through as false "leaf accounts": a spreadsheet
-  footer row (`Grand Total`) and a legitimately-real single account
-  (`Cash-in-Hand`) that has no children so it registers as a leaf — needs
-  explicit filtering.
-- No persistent storage yet — prototype scripts read/write local JSON as a
-  stand-in for the `account_mappings` Postgres table described above.
-- Only tested against one client's one month, plus header-level inspection of
-  a second client's ERP export. Multi-client support (isolated
-  `account_mappings` + taxonomy per client, per Key Design Decision #3 above)
-  is architecturally accounted for but not implemented.
-- LLM classification path is written but unexecuted end-to-end (needs a real
-  API key in this environment to validate the actual output quality).
+### Next backend work
+
+1. Add SQLAlchemy models and Alembic migrations for clients, taxonomies,
+   mappings, runs, line items, and corrections.
+2. Replace the in-memory preview flow with a persisted run workflow scoped to a
+   `client_id`.
+3. Add mapping-history conflict detection and human-approved mapping events.
+4. Add ERP-specific code aggregation and reconciliation checks.
+5. Add MIS workbook export while preserving formulas, formatting, and historical
+   columns.
+6. Add the provider-neutral LLM classifier only for unresolved review items,
+   with strict taxonomy-code validation and `NONE_MATCH` handling.
+
+### Next frontend work
+
+1. Add a Vite/React API client and client selection screen.
+2. Build workbook upload and run-status states around `POST /runs/preview`.
+3. Build the review table with account name, ancestor path, amount, proposed
+   code, method, confidence, and review reason.
+4. Add manual approve/change actions and connect them to correction endpoints.
+5. Add the Detailed MIS preview and color-code cells by resolution method.
+6. Add chat corrections only after manual review and audit persistence are
+   working.
+
+The next end-to-end milestone is: upload one anonymized TB, produce a persisted
+reviewable run, manually correct one line, and export a reconciled workbook.
 
 ## Security / privacy notes
 
