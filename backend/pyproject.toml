@@ -6,7 +6,6 @@ build-backend = "hatchling.build"
 name = "ledgermap"
 version = "0.1.0"
 description = "Maps trial balances to client-specific IFRS-coded MIS templates."
-readme = "../README.md"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.13",
