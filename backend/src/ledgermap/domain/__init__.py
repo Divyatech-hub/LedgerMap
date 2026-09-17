@@ -1,0 +1,1 @@
+"""Business concepts independent of HTTP and persistence."""

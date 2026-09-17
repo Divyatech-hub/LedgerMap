@@ -1,0 +1,1 @@
+"""Trial-balance parsing entry point; hierarchy rules will live here."""

@@ -1,0 +1,1 @@
+"""Persistence queries used by application services."""
