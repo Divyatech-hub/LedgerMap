@@ -29,10 +29,21 @@ def process_workbook(
 	source: str | Path | bytes | BinaryIO,
 	*,
 	mapping_source: str | Path | bytes | BinaryIO | None = None,
+	persisted_mappings: dict[str, str | None] | None = None,
 ) -> RunPreview:
+	"""Parse a trial balance workbook and resolve each leaf account to a code.
+
+	Mapping memory is layered: a client's persisted `account_mappings` (from the
+	database) is checked first and takes priority, since it reflects prior
+	human-approved corrections. Any name not covered there falls back to the
+	workbook's own "IFRS mapping sheet" tab (useful for bootstrapping a new
+	client from their historical file). Pass `persisted_mappings=None` to skip
+	the DB layer entirely and match against the workbook sheet alone, as before.
+	"""
 	rows = read_trial_balance(source)
 	nodes = parse_rows(rows)
-	mappings = read_mapping_memory(mapping_source or source)
+	workbook_mappings = read_mapping_memory(mapping_source or source)
+	mappings = {**workbook_mappings, **(persisted_mappings or {})}
 	source_type = detect_source_type(
 		headers=("Particulars", "Opening", "Closing"),
 		account_codes=(row.code for row in rows),
