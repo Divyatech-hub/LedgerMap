@@ -61,7 +61,9 @@ class CorrectionRead(BaseModel):
     id: int
     run_id: int
     line_item_id: int
+    previous_code: str | None
     resulting_code: str
+    is_conflict: bool
     chat_message: str | None
     corrected_by: str | None
     created_at: datetime

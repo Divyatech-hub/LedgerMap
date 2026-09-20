@@ -17,7 +17,9 @@ class Correction(Base):
         ForeignKey("run_line_items.id", ondelete="CASCADE"), index=True
     )
     chat_message: Mapped[str | None] = mapped_column(Text)
+    previous_code: Mapped[str | None] = mapped_column(String(64))
     resulting_code: Mapped[str] = mapped_column(String(64))
+    is_conflict: Mapped[bool] = mapped_column(default=False)
     corrected_by: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

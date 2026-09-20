@@ -62,6 +62,8 @@ def test_correction_updates_line_item_and_persists_mapping(
     )
     assert correction.status_code == 201, correction.text
     assert correction.json()["resulting_code"] == "9999"
+    assert correction.json()["previous_code"] is None
+    assert correction.json()["is_conflict"] is False
 
     fetched_run = db_client.get(f"/runs/{run['id']}").json()
     corrected = next(
@@ -81,6 +83,35 @@ def test_correction_updates_line_item_and_persists_mapping(
     )
     assert same_account["matched_code"] == "9999"
     assert same_account["method"] == "exact"
+
+
+def test_recorrecting_an_approved_mapping_is_flagged_as_a_conflict(
+    db_client: TestClient,
+) -> None:
+    client_id = _create_client(db_client, "Gamma Partners")
+    run = _upload_run(db_client, client_id)
+    review_item = next(
+        item for item in run["line_items"] if item["status"] == "review"
+    )
+
+    first = db_client.post(
+        f"/runs/{run['id']}/line-items/{review_item['id']}/corrections",
+        json={"resulting_code": "9999", "corrected_by": "accountant@example.com"},
+    )
+    assert first.status_code == 201, first.text
+    assert first.json()["is_conflict"] is False
+
+    # A different accountant later corrects the same account to a different
+    # code. This overwrites the earlier human-approved mapping, so it must be
+    # flagged as a conflict in the audit trail rather than applied silently.
+    second = db_client.post(
+        f"/runs/{run['id']}/line-items/{review_item['id']}/corrections",
+        json={"resulting_code": "8888", "corrected_by": "other-accountant@example.com"},
+    )
+    assert second.status_code == 201, second.text
+    assert second.json()["previous_code"] == "9999"
+    assert second.json()["resulting_code"] == "8888"
+    assert second.json()["is_conflict"] is True
 
 
 def test_run_for_unknown_client_returns_404(db_client: TestClient) -> None:

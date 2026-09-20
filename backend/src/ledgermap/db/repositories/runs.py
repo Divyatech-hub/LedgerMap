@@ -71,6 +71,8 @@ async def apply_correction(
     resulting_code: str,
     chat_message: str | None,
     corrected_by: str | None,
+    previous_code: str | None,
+    is_conflict: bool,
 ) -> Correction:
     line_item.matched_code = resulting_code
     line_item.method = "corrected"
@@ -82,7 +84,9 @@ async def apply_correction(
         run_id=line_item.run_id,
         line_item_id=line_item.id,
         chat_message=chat_message,
+        previous_code=previous_code,
         resulting_code=resulting_code,
+        is_conflict=is_conflict,
         corrected_by=corrected_by,
     )
     session.add(correction)

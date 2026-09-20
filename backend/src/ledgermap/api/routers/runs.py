@@ -117,14 +117,7 @@ async def correct_line_item(
     if run is None:
         raise HTTPException(status_code=404, detail="run not found")
 
-    correction = await runs_repo.apply_correction(
-        session,
-        line_item=line_item,
-        resulting_code=payload.resulting_code,
-        chat_message=payload.chat_message,
-        corrected_by=payload.corrected_by,
-    )
-    await mappings_repo.upsert_mapping(
+    upsert_result = await mappings_repo.upsert_mapping(
         session,
         client_id=run.client_id,
         raw_name=line_item.raw_name,
@@ -133,6 +126,15 @@ async def correct_line_item(
         code=payload.resulting_code,
         method="human_correction",
         approved_by=payload.corrected_by,
+    )
+    correction = await runs_repo.apply_correction(
+        session,
+        line_item=line_item,
+        resulting_code=payload.resulting_code,
+        chat_message=payload.chat_message,
+        corrected_by=payload.corrected_by,
+        previous_code=upsert_result.previous_code,
+        is_conflict=upsert_result.is_conflict,
     )
     await session.commit()
     return CorrectionRead.model_validate(correction)
