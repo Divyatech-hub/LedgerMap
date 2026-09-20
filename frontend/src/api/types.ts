@@ -73,6 +73,20 @@ export interface MisReport {
   unresolved_periods: string[];
 }
 
+export interface ChatCandidate {
+  id: number;
+  raw_name: string;
+  ancestors: string[];
+  matched_code: string | null;
+}
+
+export interface ChatCorrectionResponse {
+  applied: boolean;
+  explanation: string;
+  correction: Correction | null;
+  candidates: ChatCandidate[];
+}
+
 export interface ApiErrorBody {
   detail?: string;
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { correctLineItem, getRun } from "../api/client";
 import type { Run, RunLineItem } from "../api/types";
 
@@ -11,9 +11,12 @@ const METHOD_LABELS: Record<string, string> = {
   exact: "Exact match",
   fuzzy: "Fuzzy match",
   inherited: "Inherited",
-  review: "Needs review",
+  llm: "AI suggested",
   corrected: "Manually corrected",
+  review: "Needs review",
 };
+
+type FilterMode = "all" | "review";
 
 function methodClass(method: string): string {
   return method === "review" ? "method-review" : "method-confident";
@@ -26,15 +29,66 @@ function formatConfidence(confidence: string | null): string {
 }
 
 export function ReviewTable({ run, onRunUpdated }: ReviewTableProps) {
+  const [filter, setFilter] = useState<FilterMode>("all");
+  const [search, setSearch] = useState("");
+
+  const visibleItems = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return run.line_items
+      .filter((item) => filter === "all" || item.status === "review")
+      .filter((item) => !query || item.raw_name.toLowerCase().includes(query))
+      .sort((a, b) => {
+        // Items still needing review float to the top so the accountant
+        // sees what needs attention first, without losing the original
+        // (row-number) order within each group.
+        if (a.status === b.status) return (a.row_number ?? 0) - (b.row_number ?? 0);
+        return a.status === "review" ? -1 : 1;
+      });
+  }, [run.line_items, filter, search]);
+
+  const isFiltered = filter !== "all" || search.trim() !== "";
+
   return (
     <section className="panel">
-      <h2>
-        Review — {run.period}{" "}
-        <span className="counts">
-          {run.resolved_rows}/{run.total_rows} resolved
-          {run.review_rows > 0 ? `, ${run.review_rows} need review` : ""}
-        </span>
-      </h2>
+      <div className="review-header">
+        <h2>
+          Review — {run.period}{" "}
+          <span className="counts">
+            {run.resolved_rows}/{run.total_rows} resolved
+            {run.review_rows > 0 ? `, ${run.review_rows} need review` : ""}
+          </span>
+        </h2>
+        <div className="review-controls">
+          <input
+            type="search"
+            placeholder="Search accounts…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <div className="segmented">
+            <button
+              type="button"
+              className={filter === "all" ? "selected" : ""}
+              onClick={() => setFilter("all")}
+            >
+              All ({run.total_rows})
+            </button>
+            <button
+              type="button"
+              className={filter === "review" ? "selected" : ""}
+              onClick={() => setFilter("review")}
+              disabled={run.review_rows === 0}
+            >
+              Needs review ({run.review_rows})
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {run.review_rows === 0 && (
+        <p className="all-clear">Every account in this run resolved to a code. Nothing to review.</p>
+      )}
+
       <div className="table-scroll">
         <table className="review-table">
           <thead>
@@ -50,9 +104,16 @@ export function ReviewTable({ run, onRunUpdated }: ReviewTableProps) {
             </tr>
           </thead>
           <tbody>
-            {run.line_items.map((item) => (
+            {visibleItems.map((item) => (
               <LineItemRow key={item.id} runId={run.id} item={item} onRunUpdated={onRunUpdated} />
             ))}
+            {visibleItems.length === 0 && (
+              <tr>
+                <td colSpan={8} className="empty-row">
+                  {isFiltered ? "No accounts match your filter." : "No line items in this run."}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -1,5 +1,6 @@
 import type {
   ApiErrorBody,
+  ChatCorrectionResponse,
   Client,
   Correction,
   MisReport,
@@ -84,4 +85,20 @@ export function correctLineItem(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export function chatCorrectRun(
+  runId: number,
+  message: string,
+  correctedBy?: string,
+): Promise<ChatCorrectionResponse> {
+  return request<ChatCorrectionResponse>(`/runs/${runId}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, corrected_by: correctedBy }),
+  });
+}
+
+export function getMisExportUrl(clientId: number): string {
+  return `${BASE_URL}/exports/clients/${clientId}/mis`;
 }
