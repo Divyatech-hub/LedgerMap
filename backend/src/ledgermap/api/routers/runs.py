@@ -95,6 +95,18 @@ async def create_run(
     if client is None:
         raise HTTPException(status_code=404, detail="client not found")
 
+    existing_run = await runs_repo.get_completed_run_for_period(
+        session, client_id=client_id, period=period
+    )
+    if existing_run is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"a run for period '{period}' already exists for this client "
+                f"(run {existing_run.id}); delete it first or use a different period"
+            ),
+        )
+
     content = await file.read()
     persisted_mappings = await mappings_repo.get_mapping_memory(session, client_id)
     preview = process_workbook(content, persisted_mappings=persisted_mappings)

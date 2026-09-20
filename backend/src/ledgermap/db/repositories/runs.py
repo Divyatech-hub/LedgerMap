@@ -46,6 +46,19 @@ async def get_run(session: AsyncSession, run_id: int) -> Run | None:
     return result.scalar_one_or_none()
 
 
+async def get_completed_run_for_period(
+    session: AsyncSession, *, client_id: int, period: str
+) -> Run | None:
+    result = await session.execute(
+        select(Run).where(
+            Run.client_id == client_id,
+            Run.period == period,
+            Run.status == "completed",
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def list_runs_for_client(session: AsyncSession, client_id: int) -> list[Run]:
     result = await session.execute(
         select(Run).where(Run.client_id == client_id).order_by(Run.created_at.desc())

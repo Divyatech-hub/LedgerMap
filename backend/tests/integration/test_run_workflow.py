@@ -122,3 +122,22 @@ def test_run_for_unknown_client_returns_404(db_client: TestClient) -> None:
             files={"file": ("TB.xlsx", fixture_file, "application/octet-stream")},
         )
     assert response.status_code == 404
+
+
+def test_second_upload_for_the_same_period_is_rejected(db_client: TestClient) -> None:
+    client_id = _create_client(db_client, "Zeta Duplicate Co")
+    first_run = _upload_run(db_client, client_id, period="2024-03")
+
+    with FIXTURE.open("rb") as fixture_file:
+        response = db_client.post(
+            f"/runs/clients/{client_id}",
+            data={"period": "2024-03"},
+            files={"file": ("TB.xlsx", fixture_file, "application/octet-stream")},
+        )
+
+    assert response.status_code == 409
+    assert str(first_run["id"]) in response.json()["detail"]
+
+    # A different period for the same client is unaffected.
+    second_run = _upload_run(db_client, client_id, period="2024-04")
+    assert second_run["period"] == "2024-04"
