@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ledgermap.db.repositories import clients as clients_repo
 from ledgermap.db.repositories import runs as runs_repo
+from ledgermap.db.repositories import taxonomy as taxonomy_repo
 from ledgermap.db.session import get_session
 from ledgermap.schemas.clients import ClientCreate, ClientRead
 from ledgermap.schemas.mis import MisReportRead
@@ -61,5 +62,6 @@ async def get_client_mis_report(
     if client is None:
         raise HTTPException(status_code=404, detail="client not found")
     runs = await runs_repo.list_runs_for_client_with_line_items(session, client_id)
-    report = build_mis_report(runs)
+    taxonomy = await taxonomy_repo.get_taxonomy_codes(session, client_id)
+    report = build_mis_report(runs, taxonomy=taxonomy)
     return MisReportRead.model_validate(report, from_attributes=True)
