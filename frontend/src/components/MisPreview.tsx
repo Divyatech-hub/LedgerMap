@@ -24,19 +24,22 @@ export function MisPreview({ clientId, refreshKey }: MisPreviewProps) {
       .finally(() => setLoading(false));
   }, [clientId, refreshKey]);
 
-  if (loading) return <p>Loading MIS preview…</p>;
+  if (loading) return <div className="empty-state">Loading Detailed MIS…</div>;
   if (error) return <p className="error">{error}</p>;
   if (!report || report.periods.length === 0) {
-    return <p>No completed runs yet for this client.</p>;
+    return <div className="empty-state">Upload a trial balance to see the Detailed MIS here.</div>;
   }
 
   return (
     <section className="panel">
-      <h2>Detailed MIS preview</h2>
+      <h2>Detailed MIS</h2>
+      <p className="section-subtitle">
+        Every resolved account, rolled up by code, one column per period.
+      </p>
       {report.unresolved_periods.length > 0 && (
         <p className="mis-note">
-          Periods with items still awaiting review:{" "}
-          {report.unresolved_periods.join(", ")}
+          <span aria-hidden="true">●</span>
+          Still awaiting review: {report.unresolved_periods.join(", ")}
         </p>
       )}
       <div className="table-scroll">

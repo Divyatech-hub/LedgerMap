@@ -25,7 +25,9 @@ export function RunHistory({
   }, [clientId, refreshKey]);
 
   if (error) return <p className="error">{error}</p>;
-  if (runs.length === 0) return <p>No runs yet for this client.</p>;
+  if (runs.length === 0) {
+    return <p className="section-subtitle">No runs yet — upload a trial balance above.</p>;
+  }
 
   return (
     <ul className="run-list">
@@ -36,7 +38,7 @@ export function RunHistory({
             className={run.id === selectedRunId ? "selected" : ""}
             onClick={() => onSelect(run.id)}
           >
-            {run.period} · {run.source_type ?? "unknown"} · {run.status}
+            {run.period}
           </button>
         </li>
       ))}

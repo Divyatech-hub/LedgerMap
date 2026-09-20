@@ -12,20 +12,30 @@ const METHOD_LABELS: Record<string, string> = {
   fuzzy: "Fuzzy match",
   inherited: "Inherited",
   llm: "AI suggested",
-  corrected: "Manually corrected",
+  corrected: "Corrected",
   review: "Needs review",
+};
+
+const REASON_LABELS: Record<string, string> = {
+  low_fuzzy_confidence: "No confident match found",
+  no_mapping_candidates: "No mapping history for this client yet",
 };
 
 type FilterMode = "all" | "review";
 
-function methodClass(method: string): string {
-  return method === "review" ? "method-review" : "method-confident";
+function methodTone(method: string): "confident" | "review" {
+  return method === "review" ? "review" : "confident";
 }
 
 function formatConfidence(confidence: string | null): string {
   if (confidence === null) return "—";
   const value = Number(confidence);
   return Number.isFinite(value) ? `${Math.round(value * 100)}%` : confidence;
+}
+
+function formatReason(reason: string | null): string {
+  if (!reason) return "—";
+  return REASON_LABELS[reason] ?? reason.replaceAll("_", " ");
 }
 
 export function ReviewTable({ run, onRunUpdated }: ReviewTableProps) {
@@ -51,13 +61,13 @@ export function ReviewTable({ run, onRunUpdated }: ReviewTableProps) {
   return (
     <section className="panel">
       <div className="review-header">
-        <h2>
-          Review — {run.period}{" "}
-          <span className="counts">
-            {run.resolved_rows}/{run.total_rows} resolved
-            {run.review_rows > 0 ? `, ${run.review_rows} need review` : ""}
-          </span>
-        </h2>
+        <div>
+          <h2>Review</h2>
+          <p className="section-subtitle">
+            {run.resolved_rows} of {run.total_rows} accounts resolved
+            {run.review_rows > 0 ? ` · ${run.review_rows} need a code` : ""}
+          </p>
+        </div>
         <div className="review-controls">
           <input
             type="search"
@@ -71,7 +81,7 @@ export function ReviewTable({ run, onRunUpdated }: ReviewTableProps) {
               className={filter === "all" ? "selected" : ""}
               onClick={() => setFilter("all")}
             >
-              All ({run.total_rows})
+              All <span className="segmented-count">{run.total_rows}</span>
             </button>
             <button
               type="button"
@@ -79,14 +89,17 @@ export function ReviewTable({ run, onRunUpdated }: ReviewTableProps) {
               onClick={() => setFilter("review")}
               disabled={run.review_rows === 0}
             >
-              Needs review ({run.review_rows})
+              Needs review <span className="segmented-count">{run.review_rows}</span>
             </button>
           </div>
         </div>
       </div>
 
       {run.review_rows === 0 && (
-        <p className="all-clear">Every account in this run resolved to a code. Nothing to review.</p>
+        <p className="all-clear">
+          <span className="all-clear-dot" aria-hidden="true" />
+          Every account resolved to a code. Nothing left to review.
+        </p>
       )}
 
       <div className="table-scroll">
@@ -99,7 +112,7 @@ export function ReviewTable({ run, onRunUpdated }: ReviewTableProps) {
               <th>Code</th>
               <th>Method</th>
               <th>Confidence</th>
-              <th>Reason</th>
+              <th>Why</th>
               <th></th>
             </tr>
           </thead>
@@ -170,13 +183,13 @@ function LineItemRow({
         )}
       </td>
       <td>
-        <span className={methodClass(item.method)}>
+        <span className={`pill pill-${methodTone(item.method)}`}>
           {METHOD_LABELS[item.method] ?? item.method}
         </span>
       </td>
-      <td>{formatConfidence(item.confidence)}</td>
-      <td className="reason">{item.review_reason ?? "—"}</td>
-      <td>
+      <td className="amount">{formatConfidence(item.confidence)}</td>
+      <td className="reason">{formatReason(item.review_reason)}</td>
+      <td className="row-actions">
         {editing ? (
           <>
             <button type="button" onClick={handleSave} disabled={saving || !code.trim()}>
@@ -184,6 +197,7 @@ function LineItemRow({
             </button>
             <button
               type="button"
+              className="button-ghost"
               onClick={() => {
                 setEditing(false);
                 setCode(item.matched_code ?? "");
@@ -195,7 +209,7 @@ function LineItemRow({
             </button>
           </>
         ) : (
-          <button type="button" onClick={() => setEditing(true)}>
+          <button type="button" className="button-ghost" onClick={() => setEditing(true)}>
             {item.matched_code ? "Change" : "Assign code"}
           </button>
         )}

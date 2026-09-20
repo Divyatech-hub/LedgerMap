@@ -40,8 +40,8 @@ export function ClientPicker({ selectedClientId, onSelect }: ClientPickerProps) 
 
   return (
     <section className="panel">
-      <h2>Client</h2>
-      {loading && <p>Loading clients…</p>}
+      <h2>Clients</h2>
+      {loading && <p className="section-subtitle">Loading clients…</p>}
       {error && <p className="error">{error}</p>}
       {!loading && clients.length > 0 && (
         <ul className="client-list">
@@ -58,7 +58,9 @@ export function ClientPicker({ selectedClientId, onSelect }: ClientPickerProps) 
           ))}
         </ul>
       )}
-      {!loading && clients.length === 0 && <p>No clients yet — add one below.</p>}
+      {!loading && clients.length === 0 && (
+        <p className="section-subtitle">No clients yet — add one below.</p>
+      )}
       <form onSubmit={handleCreate} className="inline-form">
         <input
           type="text"
