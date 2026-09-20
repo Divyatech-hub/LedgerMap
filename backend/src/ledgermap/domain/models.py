@@ -13,6 +13,7 @@ class MappingMethod(StrEnum):
     EXACT = "exact"
     FUZZY = "fuzzy"
     INHERITED = "inherited"
+    LLM = "llm"
     REVIEW = "review"
 
 
