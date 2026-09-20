@@ -56,6 +56,23 @@ export interface Correction {
   created_at: string;
 }
 
+export interface MisCell {
+  amount: string;
+  method: string;
+}
+
+export interface MisRow {
+  code: string;
+  description: string | null;
+  cells: Record<string, MisCell>;
+}
+
+export interface MisReport {
+  periods: string[];
+  rows: MisRow[];
+  unresolved_periods: string[];
+}
+
 export interface ApiErrorBody {
   detail?: string;
 }

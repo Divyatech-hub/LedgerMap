@@ -5,7 +5,9 @@ from ledgermap.db.repositories import clients as clients_repo
 from ledgermap.db.repositories import runs as runs_repo
 from ledgermap.db.session import get_session
 from ledgermap.schemas.clients import ClientCreate, ClientRead
+from ledgermap.schemas.mis import MisReportRead
 from ledgermap.schemas.runs import RunSummary
+from ledgermap.services.mis_report import build_mis_report
 
 router = APIRouter(prefix="/clients")
 
@@ -46,3 +48,18 @@ async def list_client_runs(
         raise HTTPException(status_code=404, detail="client not found")
     runs = await runs_repo.list_runs_for_client(session, client_id)
     return [RunSummary.model_validate(run) for run in runs]
+
+
+@router.get("/{client_id}/mis", response_model=MisReportRead)
+async def get_client_mis_report(
+    client_id: int, session: AsyncSession = Depends(get_session)
+) -> MisReportRead:
+    """The Detailed MIS preview: every completed run's line items rolled up
+    by code, one column per period, oldest to newest.
+    """
+    client = await clients_repo.get_client(session, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="client not found")
+    runs = await runs_repo.list_runs_for_client_with_line_items(session, client_id)
+    report = build_mis_report(runs)
+    return MisReportRead.model_validate(report, from_attributes=True)

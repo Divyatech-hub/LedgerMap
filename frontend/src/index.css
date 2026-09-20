@@ -205,6 +205,87 @@ button:disabled {
   font-size: 0.85rem;
 }
 
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs button {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 8px 4px;
+  margin-right: 16px;
+  color: var(--muted);
+}
+
+.tabs button.selected {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.mis-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.mis-table th,
+.mis-table td {
+  text-align: right;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.mis-table th:first-child,
+.mis-table td:first-child,
+.mis-table th:nth-child(2),
+.mis-table td:nth-child(2) {
+  text-align: left;
+}
+
+.mis-description {
+  color: var(--muted);
+  white-space: normal;
+}
+
+.mis-cell-confident {
+  background: rgba(47, 111, 79, 0.1);
+}
+
+.mis-cell-review {
+  background: rgba(180, 83, 9, 0.12);
+  font-weight: 600;
+}
+
+.mis-note {
+  color: var(--review);
+  font-size: 0.85rem;
+}
+
+.mis-legend {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;

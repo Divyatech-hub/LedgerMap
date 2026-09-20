@@ -53,6 +53,23 @@ async def list_runs_for_client(session: AsyncSession, client_id: int) -> list[Ru
     return list(result.scalars().all())
 
 
+async def list_runs_for_client_with_line_items(
+    session: AsyncSession, client_id: int
+) -> list[Run]:
+    """Completed runs for a client, oldest to newest, with line items loaded.
+
+    Oldest-first ordering matches how the Detailed MIS reads: historical
+    columns on the left, the newest period on the right.
+    """
+    result = await session.execute(
+        select(Run)
+        .where(Run.client_id == client_id, Run.status == "completed")
+        .options(selectinload(Run.line_items))
+        .order_by(Run.period)
+    )
+    return list(result.scalars().all())
+
+
 async def get_line_item(
     session: AsyncSession, run_id: int, line_item_id: int
 ) -> RunLineItem | None:

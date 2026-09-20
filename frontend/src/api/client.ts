@@ -1,4 +1,11 @@
-import type { ApiErrorBody, Client, Correction, Run, RunSummary } from "./types";
+import type {
+  ApiErrorBody,
+  Client,
+  Correction,
+  MisReport,
+  Run,
+  RunSummary,
+} from "./types";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -43,6 +50,10 @@ export function createClient(name: string): Promise<Client> {
 
 export function listClientRuns(clientId: number): Promise<RunSummary[]> {
   return request<RunSummary[]>(`/clients/${clientId}/runs`);
+}
+
+export function getClientMisReport(clientId: number): Promise<MisReport> {
+  return request<MisReport>(`/clients/${clientId}/mis`);
 }
 
 export function uploadRun(
