@@ -31,12 +31,16 @@ export function ClientsPage({ onSelect }: ClientsPageProps) {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  useEffect(() => {
+  function load() {
+    setLoading(true);
+    setError(null);
     listClients()
       .then(setClients)
       .catch((err: unknown) => setError(String(err)))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(load, []);
 
   const visibleClients = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -69,9 +73,13 @@ export function ClientsPage({ onSelect }: ClientsPageProps) {
         <div>
           <h1 className="clients-page-title">Clients</h1>
           <p className="section-subtitle">
-            {clients.length === 0
-              ? "No clients yet."
-              : `${clients.length} client${clients.length === 1 ? "" : "s"}`}
+            {loading
+              ? "Loading…"
+              : error
+                ? "Couldn't load clients"
+                : clients.length === 0
+                  ? "No clients yet."
+                  : `${clients.length} client${clients.length === 1 ? "" : "s"}`}
           </p>
         </div>
         <div className="clients-page-actions">
@@ -104,11 +112,22 @@ export function ClientsPage({ onSelect }: ClientsPageProps) {
         </form>
       )}
 
-      {error && <p className="error">{error}</p>}
-
       {loading && <div className="empty-state">Loading clients…</div>}
 
-      {!loading && clients.length === 0 && !showAddForm && (
+      {!loading && error && (
+        <div className="empty-state empty-state-error">
+          <p>
+            <strong>Can't reach the LedgerMap API.</strong> Your clients are safe in the
+            database — this page just couldn't load them.
+          </p>
+          <p className="section-subtitle">{error}</p>
+          <button type="button" onClick={load}>
+            Try again
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && clients.length === 0 && !showAddForm && (
         <div className="empty-state">
           <p>No clients yet. Add your first client to get started.</p>
           <button type="submit" onClick={() => setShowAddForm(true)}>
@@ -117,7 +136,7 @@ export function ClientsPage({ onSelect }: ClientsPageProps) {
         </div>
       )}
 
-      {!loading && clients.length > 0 && (
+      {!loading && !error && clients.length > 0 && (
         <div className="client-grid">
           {visibleClients.map((client) => (
             <button

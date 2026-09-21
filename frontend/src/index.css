@@ -688,6 +688,25 @@ button[type="submit"]:hover:not(:disabled) {
   font-size: 0.92rem;
 }
 
+.empty-state p {
+  margin: 0 0 12px;
+}
+
+.empty-state button {
+  margin: 0 auto;
+}
+
+.empty-state-error {
+  border-style: solid;
+  border-color: var(--error-soft);
+  background: var(--error-soft);
+  color: var(--text);
+}
+
+.empty-state-error strong {
+  color: var(--error);
+}
+
 .all-clear {
   display: flex;
   align-items: center;
