@@ -34,12 +34,12 @@ def llm_enabled(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     _upload_run — only the /chat endpoint's own interpreter is under test.
     """
     from ledgermap.config import get_settings
-    from ledgermap.integrations.llm import providers
+    from ledgermap.integrations.llm import gemini_classifier
 
     async def no_op_classify(request):  # noqa: ANN001, ARG001
         return ClassificationResult(code=None, raw_response="NONE_MATCH")
 
-    monkeypatch.setattr(providers, "get_classifier", lambda: no_op_classify)
+    monkeypatch.setattr(gemini_classifier, "classify_with_gemini", no_op_classify)
     monkeypatch.setenv("LLM_CLASSIFICATION_ENABLED", "true")
     get_settings.cache_clear()
     yield
@@ -58,7 +58,7 @@ def test_chat_correction_returns_503_when_llm_disabled(db_client: TestClient) ->
 def test_chat_correction_applies_a_confident_match(
     db_client: TestClient, llm_enabled: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from ledgermap.integrations.llm import providers
+    from ledgermap.integrations.llm import gemini_chat_correction
 
     client_id = _create_client(db_client, "Chat Confident Co")
     run = _upload_run(db_client, client_id)
@@ -72,7 +72,11 @@ def test_chat_correction_applies_a_confident_match(
             explanation="This is clearly the Freight Charges account.",
         )
 
-    monkeypatch.setattr(providers, "get_chat_interpreter", lambda: fake_interpret)
+    monkeypatch.setattr(
+        gemini_chat_correction,
+        "interpret_chat_correction_with_gemini",
+        fake_interpret,
+    )
 
     response = db_client.post(
         f"/runs/{run['id']}/chat",
@@ -99,7 +103,7 @@ def test_chat_correction_applies_a_confident_match(
 def test_chat_correction_returns_candidates_when_ambiguous(
     db_client: TestClient, llm_enabled: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from ledgermap.integrations.llm import providers
+    from ledgermap.integrations.llm import gemini_chat_correction
 
     client_id = _create_client(db_client, "Chat Ambiguous Co")
     run = _upload_run(db_client, client_id)
@@ -113,7 +117,11 @@ def test_chat_correction_returns_candidates_when_ambiguous(
             explanation="Two accounts could match 'credit card'.",
         )
 
-    monkeypatch.setattr(providers, "get_chat_interpreter", lambda: fake_interpret)
+    monkeypatch.setattr(
+        gemini_chat_correction,
+        "interpret_chat_correction_with_gemini",
+        fake_interpret,
+    )
 
     response = db_client.post(
         f"/runs/{run['id']}/chat", json={"message": "credit card should be 2069"}

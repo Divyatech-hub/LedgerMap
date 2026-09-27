@@ -29,9 +29,6 @@ dev = [
   "pytest-asyncio>=0.25",
   "ruff>=0.9",
 ]
-llm-anthropic = [
-  "anthropic>=0.40",
-]
 llm-gemini = [
   "google-genai>=2.25",
 ]

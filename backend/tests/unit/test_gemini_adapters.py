@@ -4,11 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from ledgermap.config import get_settings
-from ledgermap.integrations.llm import (
-    gemini_chat_correction,
-    gemini_classifier,
-    providers,
-)
+from ledgermap.integrations.llm import gemini_chat_correction, gemini_classifier
 from ledgermap.integrations.llm.chat_correction import (
     ChatCorrectionRequest,
     ChatLineItemSummary,
@@ -121,16 +117,3 @@ async def test_chat_interpreter_handles_no_function_call(
     assert result.line_item_id is None
     assert result.candidate_ids == ()
 
-
-def test_provider_defaults_to_gemini() -> None:
-    assert providers.get_classifier() is gemini_classifier.classify_with_gemini
-
-
-def test_provider_can_be_switched_to_anthropic(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from ledgermap.integrations.llm import anthropic_classifier
-
-    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
-
-    assert providers.get_classifier() is anthropic_classifier.classify_with_anthropic

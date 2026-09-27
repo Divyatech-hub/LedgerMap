@@ -3,9 +3,9 @@
 Per the README's design decision 6: the target taxonomy is a fixed, closed
 list per client. The classifier must return either a real code from that
 list or an explicit NONE_MATCH — never an invented code — so every response
-is validated against the taxonomy before it's trusted. Swapping providers
-means writing a new `Classifier` and passing it in; nothing else in the
-pipeline should need to change.
+is validated against the taxonomy before it's trusted. The prompt lives here
+rather than in the provider module so swapping providers means writing a new
+`Classifier` that sends it; nothing else in the pipeline should need to change.
 """
 
 from collections.abc import Awaitable, Callable
@@ -46,3 +46,31 @@ def validate_classification(code: str | None, taxonomy: dict[str, str]) -> str |
     if code is None or code == NONE_MATCH:
         return None
     return code if code in taxonomy else None
+
+
+SYSTEM_PROMPT = (
+    "You classify trial balance accounts into a fixed chart of accounts for "
+    "an accounting firm. You are given one account's name and its position "
+    "in the trial balance hierarchy (its ancestor groups, root first), plus "
+    "the client's complete list of valid codes and descriptions. "
+    "Respond with ONLY the matching code, exactly as given, or the literal "
+    f"text {NONE_MATCH} if nothing in the list genuinely fits. Never invent "
+    "a code that isn't in the list. For a sub-ledger detail line (e.g. a "
+    "customer or supplier name), classify by what the ancestor chain "
+    "represents (receivables, payables, etc.), not by the name itself."
+)
+
+
+def build_user_message(request: ClassificationRequest) -> str:
+    taxonomy_lines = "\n".join(
+        f"{code}: {description}"
+        for code, description in sorted(request.taxonomy.items())
+    )
+    ancestor_path = (
+        " > ".join(request.ancestors) if request.ancestors else "(top level)"
+    )
+    return (
+        f"Account name: {request.account_name}\n"
+        f"Ancestor path: {ancestor_path}\n\n"
+        f"Valid codes:\n{taxonomy_lines}"
+    )

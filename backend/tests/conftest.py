@@ -5,6 +5,7 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
+from ledgermap.config import Settings, get_settings
 from ledgermap.db.session import engine
 from ledgermap.main import app
 
@@ -18,6 +19,17 @@ _TABLES_IN_DELETE_ORDER = (
     "taxonomies",
     "clients",
 )
+
+
+@pytest.fixture(autouse=True)
+def _ignore_local_env_file(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Build settings from code defaults plus explicit env vars only, never a
+    developer's `.env` — otherwise e.g. LLM_CLASSIFICATION_ENABLED=true there
+    makes every upload test call a real model."""
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture

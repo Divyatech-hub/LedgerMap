@@ -1,5 +1,4 @@
 from functools import lru_cache
-from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,11 +10,10 @@ class Settings(BaseSettings):
     )
     log_level: str = "INFO"
 
-    # Off by default: the classifier needs a real taxonomy and provider
+    # Off by default: the classifier needs a real taxonomy and Google Cloud
     # credentials to do anything useful. See ledgermap.integrations.llm for
     # the provider-agnostic interface this flag gates.
     llm_classification_enabled: bool = False
-    llm_provider: Literal["gemini", "anthropic"] = "gemini"
 
     # Gemini runs on the Gemini Enterprise Agent Platform (previously Vertex
     # AI) and authenticates with Application Default Credentials, so there

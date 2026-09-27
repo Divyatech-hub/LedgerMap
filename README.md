@@ -84,7 +84,7 @@ step for anything uncertain.
   (exact/fuzzy = confident, LLM/low-confidence = flagged for review)
 - **Chat correction**: a chat panel next to the preview — the accountant can
   say "Business Credit Card should be 2069 not 2068" in plain language;
-  Claude identifies the specific line item(s), applies the fix live in the
+  the LLM identifies the specific line item(s), applies the fix live in the
   preview, AND writes it back into `account_mappings` permanently
 - **Finalize/export**: writes the real `.xlsx`, new column appended to
   Detailed MIS matching the client's existing template/formulas exactly
@@ -171,10 +171,11 @@ This handles real client financial data (account names, balances, sometimes
 individual names within account labels). Treat accordingly:
 - Don't commit real client `.xlsx`/`.xls` files to git — add them to
   `.gitignore`, keep them local or in a private, access-controlled store
-- Route all LLM calls through the API (not a consumer chat product) for
-  standard 7-day log retention and no training use; ask about a Zero Data
-  Retention agreement with Anthropic once this moves from prototype to
-  production with live client books
+- Route all LLM calls through Vertex AI in our own GCP project (not the
+  consumer Gemini app or a personal API key), so client data stays under
+  Google Cloud's enterprise terms; review Vertex AI's data governance and
+  zero-data-retention options (e.g. disabling prompt caching) once this moves
+  from prototype to production with live client books
 - Full audit trail (the `corrections` table) is a defensibility requirement
   for this domain, not a nice-to-have — every code assignment should be
   traceable to its method and, if overridden, to who overrode it and why
