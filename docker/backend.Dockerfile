@@ -7,6 +7,6 @@ COPY backend/src backend/src
 COPY backend/alembic.ini backend/alembic.ini
 COPY backend/alembic backend/alembic
 
-RUN pip install --no-cache-dir "./backend"
+RUN pip install --no-cache-dir "./backend[llm-gemini]"
 
 CMD ["uvicorn", "ledgermap.main:app", "--host", "0.0.0.0", "--port", "8000"]

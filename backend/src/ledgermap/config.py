@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,11 +11,19 @@ class Settings(BaseSettings):
     )
     log_level: str = "INFO"
 
-    # Off by default: the classifier needs a real taxonomy and an API key
-    # (ANTHROPIC_API_KEY, read directly by the anthropic SDK) to do anything
-    # useful. See ledgermap.integrations.llm for the provider-agnostic
-    # interface this flag gates.
+    # Off by default: the classifier needs a real taxonomy and provider
+    # credentials to do anything useful. See ledgermap.integrations.llm for
+    # the provider-agnostic interface this flag gates.
     llm_classification_enabled: bool = False
+    llm_provider: Literal["gemini", "anthropic"] = "gemini"
+
+    # Gemini runs on the Gemini Enterprise Agent Platform (previously Vertex
+    # AI) and authenticates with Application Default Credentials, so there
+    # is no API key here. None lets the SDK fall back to the
+    # GOOGLE_CLOUD_PROJECT / GOOGLE_CLOUD_LOCATION environment variables.
+    google_cloud_project: str | None = None
+    google_cloud_location: str = "global"
+    gemini_model: str = "gemini-3.5-flash-lite"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

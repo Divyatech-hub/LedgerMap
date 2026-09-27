@@ -9,6 +9,7 @@ actually exist, which happens after this returns.
 from ledgermap.integrations.llm.chat_correction import (
     ChatCorrectionRequest,
     ChatCorrectionResult,
+    result_from_payload,
 )
 
 _MODEL = "claude-haiku-4-5-20251001"
@@ -116,36 +117,4 @@ async def interpret_chat_correction_with_anthropic(
             explanation="The model didn't return a usable response.",
         )
 
-    payload = tool_use.input
-    valid_ids = {item.id for item in request.line_items}
-    confident_id = payload.get("confident_line_item_id")
-    resulting_code = payload.get("resulting_code")
-
-    if (
-        confident_id in valid_ids
-        and resulting_code is not None
-        and resulting_code in request.taxonomy
-    ):
-        return ChatCorrectionResult(
-            line_item_id=confident_id,
-            resulting_code=resulting_code,
-            candidate_ids=(),
-            explanation=payload.get("explanation", ""),
-        )
-
-    candidate_ids = tuple(
-        candidate_id
-        for candidate_id in payload.get("candidate_line_item_ids", [])
-        if candidate_id in valid_ids
-    )
-    # A confident id that failed validation (bad code, or hallucinated id)
-    # is still a useful candidate rather than being dropped entirely.
-    if confident_id in valid_ids and confident_id not in candidate_ids:
-        candidate_ids = (confident_id, *candidate_ids)
-
-    return ChatCorrectionResult(
-        line_item_id=None,
-        resulting_code=None,
-        candidate_ids=candidate_ids,
-        explanation=payload.get("explanation", ""),
-    )
+    return result_from_payload(tool_use.input, request)

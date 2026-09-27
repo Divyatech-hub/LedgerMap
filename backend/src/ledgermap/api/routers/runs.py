@@ -10,6 +10,7 @@ from ledgermap.db.repositories import mappings as mappings_repo
 from ledgermap.db.repositories import runs as runs_repo
 from ledgermap.db.repositories import taxonomy as taxonomy_repo
 from ledgermap.db.session import get_session
+from ledgermap.integrations.llm import providers
 from ledgermap.integrations.llm.chat_correction import (
     ChatCorrectionRequest,
     ChatLineItemSummary,
@@ -124,12 +125,8 @@ async def create_run(
     if get_settings().llm_classification_enabled:
         taxonomy = await taxonomy_repo.get_taxonomy_codes(session, client_id)
         if taxonomy:
-            from ledgermap.integrations.llm.anthropic_classifier import (
-                classify_with_anthropic,
-            )
-
             line_items = await classify_reviews_with_llm(
-                line_items, taxonomy=taxonomy, classify=classify_with_anthropic
+                line_items, taxonomy=taxonomy, classify=providers.get_classifier()
             )
 
     run = await runs_repo.create_run(
@@ -235,11 +232,8 @@ async def chat_correct_run(
             detail="client has no known taxonomy to correct against yet",
         )
 
-    from ledgermap.integrations.llm.anthropic_chat_correction import (
-        interpret_chat_correction_with_anthropic,
-    )
-
-    result = await interpret_chat_correction_with_anthropic(
+    interpret = providers.get_chat_interpreter()
+    result = await interpret(
         ChatCorrectionRequest(
             message=payload.message,
             line_items=tuple(

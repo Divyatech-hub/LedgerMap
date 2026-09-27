@@ -32,6 +32,9 @@ dev = [
 llm-anthropic = [
   "anthropic>=0.40",
 ]
+llm-gemini = [
+  "google-genai>=2.25",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ledgermap"]
