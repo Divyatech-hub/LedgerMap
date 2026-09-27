@@ -1,4 +1,7 @@
-from pydantic import BaseModel
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict
 
 from ledgermap.schemas.runs import CorrectionRead
 
@@ -20,3 +23,13 @@ class ChatCorrectionResponse(BaseModel):
     explanation: str
     correction: CorrectionRead | None = None
     candidates: list[ChatCandidate] = []
+
+
+class ChatMessageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: Literal["user", "assistant"]
+    text: str
+    candidates: list[ChatCandidate] | None
+    created_at: datetime

@@ -99,6 +99,12 @@ def test_chat_correction_applies_a_confident_match(
     assert corrected["matched_code"] == "9001"
     assert corrected["method"] == "corrected"
 
+    history = db_client.get(f"/runs/{run['id']}/chat").json()
+    assert [(m["role"], m["text"]) for m in history] == [
+        ("user", f"{target_item['raw_name']} should be 9001"),
+        ("assistant", "This is clearly the Freight Charges account."),
+    ]
+
 
 def test_chat_correction_returns_candidates_when_ambiguous(
     db_client: TestClient, llm_enabled: None, monkeypatch: pytest.MonkeyPatch
@@ -131,3 +137,38 @@ def test_chat_correction_returns_candidates_when_ambiguous(
     body = response.json()
     assert body["applied"] is False
     assert {c["id"] for c in body["candidates"]} == set(candidate_ids)
+
+    history = db_client.get(f"/runs/{run['id']}/chat").json()
+    assert [m["role"] for m in history] == ["user", "assistant"]
+    assert {c["id"] for c in history[1]["candidates"]} == set(candidate_ids)
+
+    # Picking a candidate goes through the corrections endpoint; passing the
+    # originating chat message records the outcome in the conversation.
+    pick = db_client.post(
+        f"/runs/{run['id']}/line-items/{candidate_ids[0]}/corrections",
+        json={"resulting_code": "2069", "chat_message": "credit card should be 2069"},
+    )
+    assert pick.status_code == 201, pick.text
+
+    history = db_client.get(f"/runs/{run['id']}/chat").json()
+    assert history[-1]["role"] == "assistant"
+    assert history[-1]["text"].startswith("Applied: ")
+    assert history[-1]["text"].endswith("→ 2069.")
+
+
+def test_manual_correction_does_not_add_chat_messages(db_client: TestClient) -> None:
+    client_id = _create_client(db_client, "Manual Correction Co")
+    run = _upload_run(db_client, client_id)
+    item_id = run["line_items"][0]["id"]
+
+    response = db_client.post(
+        f"/runs/{run['id']}/line-items/{item_id}/corrections",
+        json={"resulting_code": "2001"},
+    )
+
+    assert response.status_code == 201, response.text
+    assert db_client.get(f"/runs/{run['id']}/chat").json() == []
+
+
+def test_chat_history_404s_for_unknown_run(db_client: TestClient) -> None:
+    assert db_client.get("/runs/999999/chat").status_code == 404

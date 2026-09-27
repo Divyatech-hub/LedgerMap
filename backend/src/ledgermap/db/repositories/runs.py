@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ledgermap.db.models import Correction, Run, RunLineItem
+from ledgermap.db.models import ChatMessage, Correction, Run, RunLineItem
 
 
 async def create_run(
@@ -92,6 +92,29 @@ async def get_line_item(
         )
     )
     return result.scalar_one_or_none()
+
+
+async def add_chat_message(
+    session: AsyncSession,
+    *,
+    run_id: int,
+    role: str,
+    text: str,
+    candidates: list[dict] | None = None,
+) -> ChatMessage:
+    message = ChatMessage(run_id=run_id, role=role, text=text, candidates=candidates)
+    session.add(message)
+    await session.flush()
+    return message
+
+
+async def list_chat_messages(session: AsyncSession, run_id: int) -> list[ChatMessage]:
+    result = await session.execute(
+        select(ChatMessage)
+        .where(ChatMessage.run_id == run_id)
+        .order_by(ChatMessage.id)
+    )
+    return list(result.scalars())
 
 
 async def apply_correction(

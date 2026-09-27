@@ -18,6 +18,7 @@ from ledgermap.schemas.chat import (
     ChatCandidate,
     ChatCorrectionCreate,
     ChatCorrectionResponse,
+    ChatMessageRead,
 )
 from ledgermap.schemas.runs import CorrectionCreate, CorrectionRead, RunRead
 from ledgermap.services.llm_review import classify_reviews_with_llm
@@ -202,8 +203,29 @@ async def correct_line_item(
         chat_message=payload.chat_message,
         corrected_by=payload.corrected_by,
     )
+    if payload.chat_message is not None:
+        # Picked from a chat reply's candidates: record the outcome in the
+        # conversation too. Corrections made in the table don't touch chat.
+        await runs_repo.add_chat_message(
+            session,
+            run_id=run_id,
+            role="assistant",
+            text=f"Applied: {line_item.raw_name} → {payload.resulting_code}.",
+        )
     await session.commit()
     return CorrectionRead.model_validate(correction)
+
+
+@router.get("/{run_id}/chat", response_model=list[ChatMessageRead])
+async def list_chat_messages(
+    run_id: int, session: AsyncSession = Depends(get_session)
+) -> list[ChatMessageRead]:
+    """The run's chat-correction conversation, oldest first."""
+    run = await runs_repo.get_run(session, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    messages = await runs_repo.list_chat_messages(session, run_id)
+    return [ChatMessageRead.model_validate(message) for message in messages]
 
 
 @router.post("/{run_id}/chat", response_model=ChatCorrectionResponse)
@@ -255,29 +277,42 @@ async def chat_correct_run(
         )
     )
 
+    await runs_repo.add_chat_message(
+        session, run_id=run_id, role="user", text=payload.message
+    )
+
     if result.line_item_id is None or result.resulting_code is None:
         candidates_by_id = {item.id: item for item in run.line_items}
+        candidates = [
+            ChatCandidate(
+                id=item.id,
+                raw_name=item.raw_name,
+                ancestors=item.ancestors,
+                matched_code=item.matched_code,
+            )
+            for candidate_id in result.candidate_ids
+            if (item := candidates_by_id.get(candidate_id)) is not None
+        ]
+        await runs_repo.add_chat_message(
+            session,
+            run_id=run_id,
+            role="assistant",
+            text=result.explanation or "I couldn't apply that.",
+            candidates=[candidate.model_dump() for candidate in candidates] or None,
+        )
+        await session.commit()
         return ChatCorrectionResponse(
-            applied=False,
-            explanation=result.explanation,
-            candidates=[
-                ChatCandidate(
-                    id=item.id,
-                    raw_name=item.raw_name,
-                    ancestors=item.ancestors,
-                    matched_code=item.matched_code,
-                )
-                for candidate_id in result.candidate_ids
-                if (item := candidates_by_id.get(candidate_id)) is not None
-            ],
+            applied=False, explanation=result.explanation, candidates=candidates
         )
 
     line_item = await runs_repo.get_line_item(session, run_id, result.line_item_id)
     if line_item is None:
-        return ChatCorrectionResponse(
-            applied=False,
-            explanation="The identified line item no longer exists on this run.",
+        explanation = "The identified line item no longer exists on this run."
+        await runs_repo.add_chat_message(
+            session, run_id=run_id, role="assistant", text=explanation
         )
+        await session.commit()
+        return ChatCorrectionResponse(applied=False, explanation=explanation)
 
     correction = await _apply_correction(
         session,
@@ -286,6 +321,9 @@ async def chat_correct_run(
         resulting_code=result.resulting_code,
         chat_message=payload.message,
         corrected_by=payload.corrected_by,
+    )
+    await runs_repo.add_chat_message(
+        session, run_id=run_id, role="assistant", text=result.explanation or "Done."
     )
     await session.commit()
     return ChatCorrectionResponse(

@@ -29,3 +29,6 @@ class Run(Base):
     corrections: Mapped[list["Correction"]] = relationship(
         back_populates="run", cascade="all, delete-orphan"
     )
+    chat_messages: Mapped[list["ChatMessage"]] = relationship(
+        back_populates="run", cascade="all, delete-orphan", order_by="ChatMessage.id"
+    )

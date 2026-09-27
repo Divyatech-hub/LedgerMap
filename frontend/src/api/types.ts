@@ -80,6 +80,14 @@ export interface ChatCandidate {
   matched_code: string | null;
 }
 
+export interface ChatMessage {
+  id: number;
+  role: "user" | "assistant";
+  text: string;
+  candidates: ChatCandidate[] | null;
+  created_at: string;
+}
+
 export interface ChatCorrectionResponse {
   applied: boolean;
   explanation: string;

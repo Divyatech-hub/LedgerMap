@@ -21,6 +21,7 @@ from ledgermap.main import app  # noqa: E402
 
 # Tables in child-to-parent FK order so TRUNCATE ... CASCADE isn't required.
 _TABLES_IN_DELETE_ORDER = (
+    "chat_messages",
     "corrections",
     "run_line_items",
     "runs",

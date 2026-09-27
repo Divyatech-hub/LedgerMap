@@ -1,6 +1,7 @@
 import type {
   ApiErrorBody,
   ChatCorrectionResponse,
+  ChatMessage,
   Client,
   Correction,
   MisReport,
@@ -85,6 +86,10 @@ export function correctLineItem(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export function getChatMessages(runId: number): Promise<ChatMessage[]> {
+  return request<ChatMessage[]>(`/runs/${runId}/chat`);
 }
 
 export function chatCorrectRun(
