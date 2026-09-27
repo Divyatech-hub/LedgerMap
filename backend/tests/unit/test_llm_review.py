@@ -111,3 +111,19 @@ async def test_classify_reviews_with_llm_skips_entirely_without_a_taxonomy() -> 
     )
 
     assert result == items
+
+
+@pytest.mark.asyncio
+async def test_classify_reviews_with_llm_keeps_item_in_review_when_call_fails() -> None:
+    async def classify(request: ClassificationRequest) -> ClassificationResult:
+        if request.account_name == "Broken":
+            raise RuntimeError("quota exceeded")
+        return ClassificationResult(code="3001", raw_response="3001")
+
+    items = [_review_item("Broken"), _review_item("Freight Inward")]
+    resolved = await classify_reviews_with_llm(
+        items, taxonomy=TAXONOMY, classify=classify
+    )
+
+    assert resolved[0].candidate.method == MappingMethod.REVIEW
+    assert resolved[1].candidate.code == "3001"

@@ -6,6 +6,9 @@ since this step is async, optional, and needs the client's taxonomy — none
 of which the pure matching pipeline needs to know about.
 """
 
+import asyncio
+import logging
+
 from ledgermap.domain.models import MappingCandidate, MappingMethod
 from ledgermap.integrations.llm.classifier import ClassificationRequest, Classifier
 from ledgermap.services.run_pipeline import ProcessedLineItem
@@ -16,6 +19,12 @@ from ledgermap.services.run_pipeline import ProcessedLineItem
 # self-raters, and the fixed value keeps LLM-resolved rows visually distinct
 # from exact/fuzzy matches in the UI.
 _LLM_CONFIDENCE = 0.6
+
+# Enough parallelism to turn minutes into seconds, while staying well inside
+# the model's per-minute request quota.
+_MAX_CONCURRENT_CALLS = 10
+
+logger = logging.getLogger(__name__)
 
 
 async def classify_reviews_with_llm(
@@ -32,31 +41,39 @@ async def classify_reviews_with_llm(
     if not taxonomy:
         return line_items
 
-    resolved: list[ProcessedLineItem] = []
-    for item in line_items:
+    semaphore = asyncio.Semaphore(_MAX_CONCURRENT_CALLS)
+
+    async def resolve(item: ProcessedLineItem) -> ProcessedLineItem:
         if item.candidate.method != MappingMethod.REVIEW:
-            resolved.append(item)
-            continue
+            return item
 
-        result = await classify(
-            ClassificationRequest(
-                account_name=item.node.name,
-                ancestors=item.node.ancestors,
-                taxonomy=taxonomy,
-            )
+        request = ClassificationRequest(
+            account_name=item.node.name,
+            ancestors=item.node.ancestors,
+            taxonomy=taxonomy,
         )
+        try:
+            async with semaphore:
+                result = await classify(request)
+        except Exception:
+            # One failed call (rate limit, timeout) shouldn't sink the whole
+            # upload; the line simply stays in review for the accountant.
+            logger.warning(
+                "LLM classification failed for %r", item.node.name, exc_info=True
+            )
+            return item
         if result.code is None:
-            resolved.append(item)
-            continue
+            return item
 
-        resolved.append(
-            ProcessedLineItem(
-                node=item.node,
-                candidate=MappingCandidate(
-                    code=result.code,
-                    confidence=_LLM_CONFIDENCE,
-                    method=MappingMethod.LLM,
-                ),
-            )
+        return ProcessedLineItem(
+            node=item.node,
+            candidate=MappingCandidate(
+                code=result.code,
+                confidence=_LLM_CONFIDENCE,
+                method=MappingMethod.LLM,
+            ),
         )
-    return resolved
+
+    # Calls are independent, so run them concurrently (a first-month upload
+    # can send hundreds); gather() keeps the results in input order.
+    return list(await asyncio.gather(*(resolve(item) for item in line_items)))
