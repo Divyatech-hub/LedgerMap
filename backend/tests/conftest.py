@@ -1,13 +1,23 @@
+import os
 from collections.abc import AsyncIterator, Iterator
 
-import pytest
-import pytest_asyncio
-from fastapi.testclient import TestClient
-from sqlalchemy import text
+# Must be set before anything imports ledgermap.db.session, which builds its
+# engine from settings at import time. Tests delete every row after each run,
+# so they get their own database (`make test` creates and migrates it) rather
+# than the development one.
+TEST_DATABASE_URL = (
+    "postgresql+asyncpg://ledgermap:ledgermap@localhost:5432/ledgermap_test"
+)
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
-from ledgermap.config import Settings, get_settings
-from ledgermap.db.session import engine
-from ledgermap.main import app
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import text  # noqa: E402
+
+from ledgermap.config import Settings, get_settings  # noqa: E402
+from ledgermap.db.session import engine  # noqa: E402
+from ledgermap.main import app  # noqa: E402
 
 # Tables in child-to-parent FK order so TRUNCATE ... CASCADE isn't required.
 _TABLES_IN_DELETE_ORDER = (
@@ -56,6 +66,9 @@ async def db_client() -> AsyncIterator[TestClient]:
         # loop; discard them before reconnecting on this fixture's loop, since
         # asyncpg connections can't be reused across event loops.
         await engine.dispose()
+        # Last line of defence against wiping real data if the URL above is
+        # ever changed or overridden.
+        assert engine.url.database.endswith("_test"), engine.url.database
         async with engine.begin() as connection:
             for table in _TABLES_IN_DELETE_ORDER:
                 await connection.execute(text(f"DELETE FROM {table}"))
